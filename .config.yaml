@@ -1,0 +1,27 @@
+# YAML管理工具配置文件
+app:
+  # 默认扫描目录，支持相对路径和绝对路径
+  default_scan_dir: "."
+  
+  # 上传文件配置
+  upload_folder: "uploads"
+  max_file_size: 16777216  # 16MB
+  
+  # 排除的目录（不会扫描这些目录中的YAML文件）
+  exclude_dirs:
+    - "uploads"
+    - "__pycache__"
+    - ".git"
+    - "node_modules"
+    - ".vscode"
+  
+  # 支持的文件扩展名
+  allowed_extensions:
+    - "yaml"
+    - "yml"
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 5000
+  debug: true 

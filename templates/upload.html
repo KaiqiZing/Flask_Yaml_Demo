@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}上传YAML文件 - YAML管理工具{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0"><i class="fas fa-upload me-2"></i>上传YAML文件</h3>
+            </div>
+            <div class="card-body">
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">选择YAML文件</label>
+                        <input type="file" class="form-control" id="file" name="file" 
+                               accept=".yaml,.yml" required>
+                        <div class="form-text">支持 .yaml 和 .yml 格式的文件</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="file-preview" class="form-label">文件预览</label>
+                        <textarea class="form-control" id="file-preview" rows="10" 
+                                  style="font-family: 'Courier New', monospace;" 
+                                  readonly placeholder="选择文件后将显示预览内容..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-upload me-1"></i>上传文件
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>返回首页
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('file').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('file-preview');
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.value = e.target.result;
+            };
+            reader.readAsText(file);
+        } else {
+            preview.value = '';
+        }
+    });
+
+    document.getElementById('upload-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        const formData = new FormData();
+        const fileInput = document.getElementById('file');
+        
+        if (fileInput.files.length === 0) {
+            showAlert('请选择一个文件', 'warning');
+            return;
+        }
+        
+        formData.append('file', fileInput.files[0]);
+        
+        // 显示上传进度
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>上传中...';
+        submitBtn.disabled = true;
+        
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 清空表单
+                document.getElementById('upload-form').reset();
+                document.getElementById('file-preview').value = '';
+                // 延迟跳转到首页
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            showAlert('上传失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,950 @@
+{% extends "base.html" %}
+
+{% block title %}{{ file_name }} - 编辑 - YAML管理工具{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-edit me-2"></i>编辑文件</h2>
+                <p class="text-muted mb-0">{{ file_name }}</p>
+            </div>
+            <div>
+                <button class="btn btn-success" onclick="saveFile()">
+                    <i class="fas fa-save me-1"></i>保存
+                </button>
+                <a href="{{ url_for('view_file', file_path=file_path) }}" class="btn btn-outline-primary ms-2">
+                    <i class="fas fa-eye me-1"></i>查看
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary ms-2">
+                    <i class="fas fa-arrow-left me-1"></i>返回
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-plus me-2"></i>添加新键值对</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="new-key-path" class="form-label">键路径</label>
+                            <input type="text" class="form-control" id="new-key-path" 
+                                   placeholder="例如: database.host">
+                            <div class="form-text">使用点号分隔嵌套键</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new-value" class="form-label">值</label>
+                            <input type="text" class="form-control" id="new-value" 
+                                   placeholder="输入值">
+                        </div>
+                        <button class="btn btn-primary w-100" onclick="addNewKey()">
+                            <i class="fas fa-plus me-1"></i>添加
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>修改值</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="edit-key-path" class="form-label">键路径</label>
+                            <input type="text" class="form-control" id="edit-key-path" 
+                                   placeholder="例如: database.host">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-value" class="form-label">新值</label>
+                            <input type="text" class="form-control" id="edit-value" 
+                                   placeholder="输入新值">
+                        </div>
+                        <button class="btn btn-warning w-100" onclick="updateValue()">
+                            <i class="fas fa-edit me-1"></i>更新
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-trash me-2"></i>删除键</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="delete-key-path" class="form-label">键路径</label>
+                            <input type="text" class="form-control" id="delete-key-path" 
+                                   placeholder="例如: database.host">
+                        </div>
+                        <button class="btn btn-danger w-100" onclick="deleteKey()">
+                            <i class="fas fa-trash me-1"></i>删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="editTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="editor-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#editor" type="button" role="tab">
+                                    <i class="fas fa-code me-1"></i>YAML编辑器
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="table-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#table" type="button" role="tab">
+                                    <i class="fas fa-table me-1"></i>表格预览
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="editTabsContent">
+                            <div class="tab-pane fade show active" id="editor" role="tabpanel">
+                                <div class="mb-3">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleEditorMode()">
+                                            <i class="fas fa-code me-1"></i>高级编辑
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success btn-sm" onclick="formatYaml()">
+                                            <i class="fas fa-magic me-1"></i>格式化
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-sm" onclick="validateYaml()">
+                                            <i class="fas fa-check me-1"></i>验证语法
+                                        </button>
+                                    </div>
+                                    <span class="badge bg-info ms-2" id="editor-status">基础模式</span>
+                                </div>
+                                <div id="editor-container">
+                                    <div id="yaml-editor-advanced" style="display: none; height: 400px;"></div>
+                                    <textarea id="yaml-editor" class="form-control" rows="20" 
+                                              style="font-family: 'Courier New', monospace;">{{ raw_content }}</textarea>
+                                </div>
+                                <div id="editor-errors" class="mt-2" style="display: none;">
+                                    <!-- 错误信息将在这里显示 -->
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="table" role="tabpanel">
+                                <div class="mb-3">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="enableTableEdit()">
+                                            <i class="fas fa-edit me-1"></i>启用编辑
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success btn-sm" onclick="saveTableChanges()">
+                                            <i class="fas fa-save me-1"></i>保存更改
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cancelTableEdit()">
+                                            <i class="fas fa-times me-1"></i>取消编辑
+                                        </button>
+                                    </div>
+                                    <span class="badge bg-info ms-2" id="edit-status">只读模式</span>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="preview-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width: 35%">键路径</th>
+                                                <th style="width: 35%">值</th>
+                                                <th style="width: 15%">类型</th>
+                                                <th style="width: 15%">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="preview-tbody">
+                                            <!-- 表格数据将在这里动态生成 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 对路径进行编码，确保特殊字符不会丢失
+    const filePath = encodeURIComponent('{{ file_path }}'.replace(/\\/g, '/'));
+    let currentYamlData = {{ yaml_data | tojson | safe }};
+
+    // 添加js-yaml库
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js';
+    document.head.appendChild(script);
+
+    // 添加Monaco Editor库
+    const monacoScript = document.createElement('script');
+    monacoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js';
+    document.head.appendChild(monacoScript);
+
+    let monacoEditor = null;
+    let isAdvancedMode = false;
+
+    // 切换编辑器模式
+    function toggleEditorMode() {
+        const basicEditor = document.getElementById('yaml-editor');
+        const advancedEditor = document.getElementById('yaml-editor-advanced');
+        const status = document.getElementById('editor-status');
+        
+        if (isAdvancedMode) {
+            // 切换到基础模式
+            basicEditor.style.display = 'block';
+            advancedEditor.style.display = 'none';
+            status.textContent = '基础模式';
+            status.className = 'badge bg-info ms-2';
+            isAdvancedMode = false;
+        } else {
+            // 切换到高级模式
+            basicEditor.style.display = 'none';
+            advancedEditor.style.display = 'block';
+            status.textContent = '高级模式';
+            status.className = 'badge bg-warning ms-2';
+            isAdvancedMode = true;
+            
+            // 初始化Monaco Editor
+            if (!monacoEditor) {
+                initMonacoEditor();
+            }
+        }
+    }
+
+    // 初始化Monaco Editor
+    function initMonacoEditor() {
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' } });
+        require(['vs/editor/editor.main'], function() {
+            const container = document.getElementById('yaml-editor-advanced');
+            const content = document.getElementById('yaml-editor').value;
+            
+            monacoEditor = monaco.editor.create(container, {
+                value: content,
+                language: 'yaml',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: true },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                fontFamily: 'Consolas, "Courier New", monospace',
+                tabSize: 2,
+                insertSpaces: true,
+                wordWrap: 'on',
+                lineNumbers: 'on',
+                folding: true,
+                foldingStrategy: 'indentation',
+                showFoldingControls: 'always',
+                renderWhitespace: 'selection',
+                renderControlCharacters: false,
+                suggestOnTriggerCharacters: true,
+                quickSuggestions: {
+                    other: true,
+                    comments: false,
+                    strings: true
+                },
+                parameterHints: {
+                    enabled: true
+                },
+                hover: {
+                    enabled: true
+                },
+                contextmenu: true,
+                mouseWheelZoom: true
+            });
+
+            // 监听内容变化
+            monacoEditor.onDidChangeModelContent(function() {
+                const value = monacoEditor.getValue();
+                document.getElementById('yaml-editor').value = value;
+                updatePreviewTable();
+            });
+        });
+    }
+
+    // 格式化YAML
+    function formatYaml() {
+        try {
+            const content = getEditorContent();
+            const yamlData = jsyaml.load(content);
+            const formattedYaml = jsyaml.dump(yamlData, {
+                indent: 2,
+                lineWidth: -1,
+                noRefs: true,
+                sortKeys: false
+            });
+            
+            setEditorContent(formattedYaml);
+            showAlert('YAML格式化成功', 'success');
+        } catch (error) {
+            showAlert('格式化失败: ' + error.message, 'danger');
+        }
+    }
+
+    // 验证YAML语法
+    function validateYaml() {
+        const content = getEditorContent();
+        const errorDiv = document.getElementById('editor-errors');
+        
+        try {
+            jsyaml.load(content);
+            errorDiv.style.display = 'none';
+            showAlert('YAML语法验证通过', 'success');
+        } catch (error) {
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>语法错误:</strong> ${error.message}
+                    ${error.mark ? `<br><small>位置: 第${error.mark.line + 1}行, 第${error.mark.column + 1}列</small>` : ''}
+                </div>
+            `;
+        }
+    }
+
+    // 获取编辑器内容
+    function getEditorContent() {
+        if (isAdvancedMode && monacoEditor) {
+            return monacoEditor.getValue();
+        } else {
+            return document.getElementById('yaml-editor').value;
+        }
+    }
+
+    // 设置编辑器内容
+    function setEditorContent(content) {
+        if (isAdvancedMode && monacoEditor) {
+            monacoEditor.setValue(content);
+        } else {
+            document.getElementById('yaml-editor').value = content;
+        }
+    }
+
+    // 更新编辑器内容（修改现有函数）
+    function updateEditorContent(yamlData) {
+        const yamlString = jsyaml.dump(yamlData, {
+            indent: 2,
+            lineWidth: -1,
+            noRefs: true
+        });
+        setEditorContent(yamlString);
+        currentYamlData = yamlData;
+        updatePreviewTable();
+    }
+
+    // 修改保存文件函数
+    function saveFile() {
+        const content = getEditorContent();
+        
+        fetch('/api/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                content: content
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新当前数据
+                try {
+                    currentYamlData = jsyaml.load(content);
+                    updatePreviewTable();
+                } catch (e) {
+                    console.error('解析YAML失败:', e);
+                }
+            }
+        })
+        .catch(error => {
+            showAlert('保存失败: ' + error.message, 'danger');
+        });
+    }
+
+    function addNewKey() {
+        const keyPath = document.getElementById('new-key-path').value.trim();
+        const value = document.getElementById('new-value').value.trim();
+        
+        if (!keyPath || !value) {
+            showAlert('请填写完整的键路径和值', 'warning');
+            return;
+        }
+        
+        fetch('/api/add_key', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                key_path: keyPath,
+                value: value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新编辑器内容
+                updateEditorContent(data.data);
+                // 清空输入框
+                document.getElementById('new-key-path').value = '';
+                document.getElementById('new-value').value = '';
+            }
+        })
+        .catch(error => {
+            showAlert('添加失败: ' + error.message, 'danger');
+        });
+    }
+
+    function updateValue() {
+        const keyPath = document.getElementById('edit-key-path').value.trim();
+        const value = document.getElementById('edit-value').value.trim();
+        
+        if (!keyPath || !value) {
+            showAlert('请填写完整的键路径和新值', 'warning');
+            return;
+        }
+        
+        fetch('/api/update_value', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                key_path: keyPath,
+                value: value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新编辑器内容
+                updateEditorContent(data.data);
+                // 清空输入框
+                document.getElementById('edit-key-path').value = '';
+                document.getElementById('edit-value').value = '';
+            }
+        })
+        .catch(error => {
+            showAlert('更新失败: ' + error.message, 'danger');
+        });
+    }
+
+    function deleteKey() {
+        const keyPath = document.getElementById('delete-key-path').value.trim();
+        
+        if (!keyPath) {
+            showAlert('请填写要删除的键路径', 'warning');
+            return;
+        }
+        
+        if (!confirm(`确定要删除键 "${keyPath}" 吗？`)) {
+            return;
+        }
+        
+        fetch('/api/delete_key', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                key_path: keyPath
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新编辑器内容
+                updateEditorContent(data.data);
+                // 清空输入框
+                document.getElementById('delete-key-path').value = '';
+            }
+        })
+        .catch(error => {
+            showAlert('删除失败: ' + error.message, 'danger');
+        });
+    }
+
+    function updatePreviewTable() {
+        const tbody = document.getElementById('preview-tbody');
+        tbody.innerHTML = '';
+        
+        function addRow(key, value, currentPath) {
+            const row = document.createElement('tr');
+            
+            const valueType = Array.isArray(value) ? 'array' : typeof value;
+            const valueDisplay = Array.isArray(value) ? 
+                `[${value.join(', ')}]` : 
+                (typeof value === 'string' && value.length > 100) ? 
+                value.substring(0, 100) + '...' : value;
+            
+            // 检查是否为编辑模式
+            const isEditMode = document.getElementById('edit-status').textContent === '编辑模式';
+            
+            row.innerHTML = `
+                <td>
+                    <span class="path-key">${currentPath}</span>
+                </td>
+                <td>
+                    <span class="path-value" data-path="${currentPath}" contenteditable="${isEditMode}">${valueDisplay}</span>
+                </td>
+                <td>
+                    <span class="badge bg-secondary">${valueType}</span>
+                </td>
+                <td>
+                    ${isEditMode ? `
+                        <div class="table-actions">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="editRow('${currentPath}')" title="编辑值">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow('${currentPath}')" title="删除键">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    ` : ''}
+                </td>
+            `;
+            
+            // 为可编辑元素添加事件监听器
+            if (isEditMode) {
+                const valueElement = row.querySelector('.path-value');
+                valueElement.addEventListener('blur', function() {
+                    const newValue = this.textContent;
+                    const path = this.getAttribute('data-path');
+                    updateValueInData(path, newValue);
+                });
+                
+                valueElement.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+            }
+            
+            tbody.appendChild(row);
+        }
+        
+        function traverse(obj, currentPath = '') {
+            for (const [key, value] of Object.entries(obj)) {
+                const newPath = currentPath ? `${currentPath}.${key}` : key;
+                
+                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                    // 对象类型 - 递归遍历
+                    traverse(value, newPath);
+                } else {
+                    // 基本类型 - 添加到表格
+                    addRow(key, value, newPath);
+                }
+            }
+        }
+        
+        traverse(currentYamlData);
+    }
+
+    function updateValueInData(path, newValue) {
+        // 更新内存中的数据
+        const keys = path.split('.');
+        let current = currentYamlData;
+        
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (!(keys[i] in current)) {
+                current[keys[i]] = {};
+            }
+            current = current[keys[i]];
+        }
+        
+        // 尝试转换值的类型
+        let convertedValue = newValue;
+        const originalValue = current[keys[keys.length - 1]];
+        
+        if (typeof originalValue === 'number') {
+            convertedValue = parseFloat(newValue) || 0;
+        } else if (typeof originalValue === 'boolean') {
+            convertedValue = newValue.toLowerCase() === 'true';
+        } else if (Array.isArray(originalValue)) {
+            try {
+                convertedValue = JSON.parse(newValue);
+            } catch (e) {
+                convertedValue = newValue.split(',').map(item => item.trim());
+            }
+        }
+        
+        current[keys[keys.length - 1]] = convertedValue;
+        
+        // 更新编辑器内容
+        const yamlString = jsyaml.dump(currentYamlData, {
+            indent: 2,
+            lineWidth: -1,
+            noRefs: true
+        });
+        document.getElementById('yaml-editor').value = yamlString;
+    }
+
+    function enableTableEdit() {
+        const tbody = document.getElementById('preview-tbody');
+        tbody.innerHTML = '';
+        updatePreviewTable();
+        document.getElementById('edit-status').textContent = '编辑模式';
+        document.getElementById('edit-status').classList.remove('bg-info');
+        document.getElementById('edit-status').classList.add('bg-warning');
+    }
+
+    function saveTableChanges() {
+        const tbody = document.getElementById('preview-tbody');
+        const rows = tbody.querySelectorAll('tr');
+        const changes = [];
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const keyPath = cells[0].querySelector('.path-key').textContent;
+            const newValue = cells[1].querySelector('.path-value').textContent;
+            
+            changes.push({
+                key_path: keyPath,
+                value: newValue
+            });
+        });
+        
+        fetch('/api/update_values', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                changes: changes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新当前数据
+                try {
+                    currentYamlData = jsyaml.load(data.data);
+                    updatePreviewTable();
+                } catch (e) {
+                    console.error('解析YAML失败:', e);
+                }
+            }
+        })
+        .catch(error => {
+            showAlert('保存更改失败: ' + error.message, 'danger');
+        });
+    }
+
+    function cancelTableEdit() {
+        updatePreviewTable();
+        document.getElementById('edit-status').textContent = '只读模式';
+        document.getElementById('edit-status').classList.remove('bg-warning');
+        document.getElementById('edit-status').classList.add('bg-info');
+    }
+
+    function deleteRow(keyPath) {
+        if (!confirm(`确定要删除键 "${keyPath}" 吗？`)) {
+            return;
+        }
+        
+        fetch('/api/delete_key', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: decodeURIComponent(filePath),
+                key_path: keyPath
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showAlert(data.error, 'danger');
+            } else {
+                showAlert(data.message, 'success');
+                // 更新编辑器内容
+                updateEditorContent(data.data);
+            }
+        })
+        .catch(error => {
+            showAlert('删除失败: ' + error.message, 'danger');
+        });
+    }
+
+    function editRow(keyPath) {
+        const tbody = document.getElementById('preview-tbody');
+        const rows = tbody.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const currentPath = cells[0].querySelector('.path-key').textContent;
+            
+            if (currentPath === keyPath) {
+                const valueCell = cells[1].querySelector('.path-value');
+                const currentValue = valueCell.textContent;
+                
+                // 创建输入框
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-control form-control-sm';
+                input.value = currentValue;
+                
+                // 替换内容为输入框
+                valueCell.innerHTML = '';
+                valueCell.appendChild(input);
+                input.focus();
+                
+                // 添加事件监听器
+                input.addEventListener('blur', function() {
+                    const newValue = this.value;
+                    valueCell.innerHTML = newValue;
+                    updateValueInData(keyPath, newValue);
+                });
+                
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        valueCell.innerHTML = currentValue;
+                    }
+                });
+            }
+        });
+    }
+
+    // 页面加载完成后初始化表格
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePreviewTable();
+        
+        // 添加快捷键支持
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+S 保存文件
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveFile();
+            }
+            
+            // Ctrl+Shift+F 格式化
+            if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+                e.preventDefault();
+                formatYaml();
+            }
+            
+            // Ctrl+Shift+V 验证语法
+            if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+                e.preventDefault();
+                validateYaml();
+            }
+            
+            // Ctrl+E 切换编辑器模式
+            if (e.ctrlKey && e.key === 'e') {
+                e.preventDefault();
+                toggleEditorMode();
+            }
+        });
+        
+        // 自动保存功能
+        let autoSaveTimer = null;
+        const autoSaveDelay = 3000; // 3秒延迟
+        
+        function setupAutoSave() {
+            const editor = document.getElementById('yaml-editor');
+            editor.addEventListener('input', function() {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = setTimeout(function() {
+                    // 显示自动保存提示
+                    const status = document.getElementById('editor-status');
+                    const originalText = status.textContent;
+                    status.textContent = '自动保存中...';
+                    status.className = 'badge bg-warning ms-2';
+                    
+                    // 这里可以添加自动保存逻辑
+                    setTimeout(function() {
+                        status.textContent = originalText;
+                        status.className = originalText.includes('高级') ? 'badge bg-warning ms-2' : 'badge bg-info ms-2';
+                    }, 1000);
+                }, autoSaveDelay);
+            });
+        }
+        
+        setupAutoSave();
+    });
+</script>
+
+<style>
+    .path-key {
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .path-value {
+        font-family: 'Courier New', monospace;
+        word-break: break-word;
+        min-height: 20px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+    }
+    
+    .path-value[contenteditable="true"] {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        outline: none;
+    }
+    
+    .path-value[contenteditable="true"]:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .path-value[contenteditable="true"]:focus {
+        background-color: #fff;
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .table-responsive {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    #preview-table tbody tr {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    #preview-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    #preview-table tbody tr.editing {
+        background-color: #e3f2fd;
+        border-left: 4px solid #007bff;
+    }
+    
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    
+    .form-control-sm {
+        height: 28px;
+        font-size: 14px;
+    }
+    
+    .badge {
+        font-size: 12px;
+    }
+    
+    /* 编辑状态指示器 */
+    #edit-status {
+        transition: all 0.3s ease;
+    }
+    
+    /* 表格操作按钮样式 */
+    .table-actions {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    
+    .table-actions .btn {
+        padding: 2px 6px;
+        font-size: 12px;
+    }
+    
+    /* 编辑器样式 */
+    #editor-container {
+        position: relative;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    #yaml-editor {
+        border: none;
+        border-radius: 0;
+        resize: vertical;
+        min-height: 400px;
+    }
+    
+    #yaml-editor:focus {
+        box-shadow: none;
+        border-color: #007bff;
+    }
+    
+    #yaml-editor-advanced {
+        border: none;
+        border-radius: 0;
+    }
+    
+    /* 编辑器工具栏样式 */
+    .editor-toolbar {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 8px 12px;
+    }
+    
+    /* 错误信息样式 */
+    #editor-errors {
+        border-top: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+    }
+    
+    #editor-errors .alert {
+        margin: 0;
+        border: none;
+        border-radius: 0;
+    }
+    
+    /* Monaco Editor 自定义样式 */
+    .monaco-editor {
+        border-radius: 0;
+    }
+    
+    /* 编辑器状态指示器 */
+    #editor-status {
+        transition: all 0.3s ease;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .btn-group .btn {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        
+        #yaml-editor {
+            font-size: 14px;
+        }
+    }
+</style>
+{% endblock %} 

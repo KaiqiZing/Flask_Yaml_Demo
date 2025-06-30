@@ -1,0 +1,43 @@
+# 登录测试数据
+login:
+  success:
+    username: admin
+    password: admin123
+    remember_me: true
+    expected:
+      code: 200
+      msg: "操作成功"
+  
+  invalid_password:
+    username: admin
+    password: wrong_password
+    expected:
+      code: 500
+      msg: "用户不存在/密码错误"
+
+  mutil_password:
+    username: admin
+    password: wrong_password
+    expected:
+      code: 500
+      msg: "密码输入错误5次，帐户锁定10分钟"
+
+  empty_credentials:
+    username: ""
+    password: ""
+    expected:
+      code: 500
+      msg: "用户/密码必须填写"
+
+# 用户信息测试数据
+user_info:
+  expected:
+    code: 200
+    msg: "操作成功"
+    data:
+      user:
+        userId: 1
+        userName: admin
+        nickName: "管理员"
+      roles: ["admin"]
+      permissions: ["*:*:*"] 

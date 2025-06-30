@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+    environment:
+      - FLASK_ENV=development
+    restart: unless-stopped
+
+  # 可选：添加数据库服务
+  # postgres:
+  #   image: postgres:13
+  #   environment:
+  #     POSTGRES_DB: yaml_manager
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: secret123
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+volumes:
+  postgres_data: 

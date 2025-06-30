@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}YAML文件列表 - YAML管理工具{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-list me-2"></i>YAML文件列表</h2>
+            <div>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-1"></i>上传文件
+                </a>
+                <button class="btn btn-outline-secondary ms-2" onclick="refreshFiles()">
+                    <i class="fas fa-sync-alt me-1"></i>刷新
+                </button>
+            </div>
+        </div>
+
+        <!-- 目录选择器 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <label for="directory-select" class="form-label">
+                            <i class="fas fa-folder me-1"></i>扫描目录
+                        </label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="directory-input" 
+                                   value="{{ current_dir }}" placeholder="输入目录路径">
+                            <button class="btn btn-outline-primary" type="button" onclick="changeDirectory()">
+                                <i class="fas fa-search me-1"></i>扫描
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="text-muted me-3">
+                                <i class="fas fa-info-circle me-1"></i>当前目录: 
+                                <strong>{{ current_dir }}</strong>
+                            </span>
+                            <button class="btn btn-outline-info btn-sm" onclick="browseDirectory()">
+                                <i class="fas fa-folder-open me-1"></i>浏览
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if yaml_files %}
+        <div class="row">
+            {% for file in yaml_files %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card file-item h-100 {% if file.error %}error-file{% else %}success-file{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-file-code text-primary me-2"></i>
+                                {{ file.name }}
+                            </h6>
+                            <span class="badge {% if file.error %}bg-danger{% else %}bg-success{% endif %}">
+                                {% if file.error %}错误{% else %}正常{% endif %}
+                            </span>
+                        </div>
+                        
+                        <p class="card-text text-muted small mb-2">
+                            <i class="fas fa-folder me-1"></i>{{ file.path }}
+                        </p>
+                        
+                        <p class="card-text text-muted small mb-3">
+                            <i class="fas fa-weight-hanging me-1"></i>{{ formatFileSize(file.size) }}
+                        </p>
+
+                        {% if file.error %}
+                        <div class="alert alert-danger small mb-3">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>解析错误:</strong> {{ file.error }}
+                        </div>
+                        {% endif %}
+
+                        <div class="btn-group w-100" role="group">
+                            <a href="{{ url_for('view_file', file_path=file.path) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-eye me-1"></i>查看
+                            </a>
+                            {% if not file.error %}
+                            <a href="{{ url_for('edit_file', file_path=file.path) }}" 
+                               class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-edit me-1"></i>编辑
+                            </a>
+                            {% endif %}
+                            <button class="btn btn-outline-info btn-sm" 
+                                    onclick="downloadFile('{{ file.path }}')">
+                                <i class="fas fa-download me-1"></i>下载
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">没有找到YAML文件</h4>
+            <p class="text-muted">在目录 "{{ current_dir }}" 中没有发现任何.yaml或.yml文件</p>
+            <div class="d-flex justify-content-center gap-2">
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                    <i class="fas fa-upload me-1"></i>上传第一个文件
+                </a>
+                <button class="btn btn-outline-secondary" onclick="changeDirectory()">
+                    <i class="fas fa-folder me-1"></i>选择其他目录
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function downloadFile(filePath) {
+        window.open(`/api/download/${encodeURIComponent(filePath)}`, '_blank');
+    }
+
+    function changeDirectory() {
+        const dir = document.getElementById('directory-input').value.trim();
+        if (dir) {
+            window.location.href = `/?dir=${encodeURIComponent(dir)}`;
+        }
+    }
+
+    function browseDirectory() {
+        // 这里可以添加目录浏览功能
+        // 由于浏览器安全限制，我们提供一个简单的输入提示
+        const dir = prompt('请输入要扫描的目录路径:', '{{ current_dir }}');
+        if (dir) {
+            document.getElementById('directory-input').value = dir;
+            changeDirectory();
+        }
+    }
+
+    // 支持回车键切换目录
+    document.getElementById('directory-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            changeDirectory();
+        }
+    });
+
+    // 格式化文件大小显示
+    document.addEventListener('DOMContentLoaded', function() {
+        const sizeElements = document.querySelectorAll('.card-text.text-muted.small');
+        sizeElements.forEach(element => {
+            if (element.textContent.includes('Bytes')) {
+                const sizeText = element.textContent;
+                const sizeMatch = sizeText.match(/(\d+)/);
+                if (sizeMatch) {
+                    const bytes = parseInt(sizeMatch[1]);
+                    element.innerHTML = element.innerHTML.replace(
+                        sizeMatch[0] + ' Bytes',
+                        formatFileSize(bytes)
+                    );
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 
