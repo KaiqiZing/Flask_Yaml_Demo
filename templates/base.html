@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}YAML管理工具{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <!-- Toastify CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" rel="stylesheet">
     <style>
         .yaml-tree {
             font-family: 'Courier New', monospace;
@@ -41,10 +45,34 @@
         .success-file {
             border-left: 4px solid #198754;
         }
+        /* 通知样式 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+        }
+        .notification-item {
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
+    {% block styles %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-file-code me-2"></i>YAML管理工具
@@ -53,7 +81,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
                             <i class="fas fa-home me-1"></i>首页
@@ -61,43 +89,88 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('upload_file') }}">
-                            <i class="fas fa-upload me-1"></i>上传文件
+                            <i class="fas fa-upload me-1"></i>上传
                         </a>
                     </li>
                 </ul>
-                <div class="navbar-nav">
-                    <button class="btn btn-outline-light btn-sm" onclick="refreshFiles()">
-                        <i class="fas fa-sync-alt me-1"></i>刷新
-                    </button>
-                </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <!-- 主要内容 -->
+    <div class="container my-4">
         {% block content %}{% endblock %}
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 通知容器 -->
+    <div class="notification" id="notification-container"></div>
+
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <!-- Toastify JS -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    
     <script>
-        function refreshFiles() {
-            location.reload();
+        // 初始化Socket.IO连接
+        const socket = io();
+        
+        // 监听文件变化事件
+        socket.on('file_changed', function(data) {
+            const fileName = data.path.split(/[/\\]/).pop();
+            showNotification(`文件 ${fileName} 已${getOperationName(data.type)}`, data.type);
+        });
+        
+        // 获取操作名称
+        function getOperationName(type) {
+            switch(type) {
+                case 'modified':
+                    return '修改';
+                case 'created':
+                    return '创建';
+                case 'deleted':
+                    return '删除';
+                default:
+                    return '更新';
+            }
         }
-
+        
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: getNotificationColor(type),
+                stopOnFocus: true,
+                onClick: function(){}
+            }).showToast();
+        }
+        
+        // 获取通知颜色
+        function getNotificationColor(type) {
+            switch(type) {
+                case 'modified':
+                    return "#198754";  // 绿色
+                case 'created':
+                    return "#0d6efd";  // 蓝色
+                case 'deleted':
+                    return "#dc3545";  // 红色
+                case 'error':
+                    return "#dc3545";  // 红色
+                default:
+                    return "#198754";  // 默认绿色
+            }
+        }
+        
+        // 显示提示信息
         function showAlert(message, type = 'success') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
-            
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
+            showNotification(message, type);
         }
 
+        // 格式化文件大小显示
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;

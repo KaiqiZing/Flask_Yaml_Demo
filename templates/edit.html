@@ -172,8 +172,16 @@
 {% block scripts %}
 <script>
     // 对路径进行编码，确保特殊字符不会丢失
-    const filePath = encodeURIComponent('{{ file_path }}'.replace(/\\/g, '/'));
-    let currentYamlData = {{ yaml_data | tojson | safe }};
+    function normalizePath(path) {
+        // 使用字符串分割和拼接来避免正则表达式的问题
+        const parts = path.split('\\');
+        return parts.join('/').split('/').filter(Boolean).join('/');
+    }
+
+    // 对模板变量进行编码和规范化
+    const rawPath = String.raw`{{ file_path }}`;  // 使用String.raw来处理原始字符串
+    const filePath = encodeURIComponent(normalizePath(rawPath));
+    const currentYamlData = {{ yaml_data | tojson | safe }};  // 使用const代替let
 
     // 添加js-yaml库
     const script = document.createElement('script');
@@ -346,7 +354,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 content: content
             })
         })
@@ -385,7 +393,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 key_path: keyPath,
                 value: value
             })
@@ -423,7 +431,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 key_path: keyPath,
                 value: value
             })
@@ -464,7 +472,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 key_path: keyPath
             })
         })
@@ -632,7 +640,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 changes: changes
             })
         })
@@ -674,7 +682,7 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                file_path: decodeURIComponent(filePath),
+                file_path: normalizePath(decodeURIComponent(filePath)),
                 key_path: keyPath
             })
         })

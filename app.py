@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from flask_socketio import SocketIO, emit
 import os
 import yaml
 import json
@@ -8,6 +9,8 @@ import glob
 from pathlib import Path
 import tempfile
 import shutil
+from file_monitor import FileMonitor
+from datetime import datetime
 
 # 读取配置文件
 def load_config():
@@ -50,6 +53,12 @@ app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['UPLOAD_FOLDER'] = config['app']['upload_folder']
 app.config['MAX_CONTENT_LENGTH'] = config['app']['max_file_size']
 app.config['DEFAULT_SCAN_DIR'] = config['app']['default_scan_dir']
+
+# 初始化SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# 初始化文件监控器
+file_monitor = FileMonitor(app.config['DEFAULT_SCAN_DIR'])
 
 # 确保上传目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -181,7 +190,7 @@ def save_file():
         if '\\' in file_path or '/' in file_path:
             file_name = os.path.basename(file_path)
         else:
-            file_name = "auth_data.yaml"
+            return jsonify({'error': '无效的文件路径'}), 400
         
         # 构建新的文件路径，保存到default_scan_dir
         new_file_path = os.path.join(app.config['DEFAULT_SCAN_DIR'], file_name)
@@ -202,9 +211,16 @@ def save_file():
         with open(new_file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        return jsonify({'message': '文件保存成功'})
+        # 通过WebSocket发送通知
+        socketio.emit('file_changed', {
+            'type': 'modified',
+            'path': str(new_file_path),
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        
+        return jsonify({'message': '文件保存成功', 'status': 'success'})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e), 'status': 'error'}), 500
 
 @app.route('/api/update_value', methods=['POST'])
 def update_value():
@@ -215,15 +231,13 @@ def update_value():
         print(f"原始file_path: {file_path}")
         
         # 从URL路径中提取正确的文件名
-        # 原始URL路径格式: /edit/C:/Users/z3744/Desktop/cursor_project/RY_PytestDemo/data\auth_data.yaml
+        # 原始URL路径格式: /edit/C:/Users/z3744/Desktop/cursor_project/RY_PytestDemo/data/example.yaml
         # 需要从URL中提取实际的文件路径
         if '\\' in file_path or '/' in file_path:
             # 如果路径包含分隔符，说明是完整路径
             file_name = os.path.basename(file_path)
         else:
-            # 如果路径不包含分隔符，说明路径被破坏了，需要从其他地方获取
-            # 这里我们假设文件名是 auth_data.yaml
-            file_name = "auth_data.yaml"
+            return jsonify({'error': '无效的文件路径'}), 400
         
         print(f"提取的文件名: {file_name}")
         
@@ -299,7 +313,7 @@ def delete_key():
         if '\\' in file_path or '/' in file_path:
             file_name = os.path.basename(file_path)
         else:
-            file_name = "auth_data.yaml"
+            return jsonify({'error': '无效的文件路径'}), 400
         
         # 构建新的文件路径，保存到default_scan_dir
         new_file_path = os.path.join(app.config['DEFAULT_SCAN_DIR'], file_name)
@@ -346,7 +360,7 @@ def add_key():
         if '\\' in file_path or '/' in file_path:
             file_name = os.path.basename(file_path)
         else:
-            file_name = "auth_data.yaml"
+            return jsonify({'error': '无效的文件路径'}), 400
         
         # 构建新的文件路径，保存到default_scan_dir
         new_file_path = os.path.join(app.config['DEFAULT_SCAN_DIR'], file_name)
@@ -457,7 +471,7 @@ def update_values():
         if '\\' in file_path or '/' in file_path:
             file_name = os.path.basename(file_path)
         else:
-            file_name = "auth_data.yaml"
+            return jsonify({'error': '无效的文件路径'}), 400
         
         # 构建新的文件路径，保存到default_scan_dir
         new_file_path = os.path.join(app.config['DEFAULT_SCAN_DIR'], file_name)
@@ -523,9 +537,31 @@ def update_values():
         print(f"批量更新异常: {e}")
         return jsonify({'error': str(e)}), 500
 
+@socketio.on('connect')
+def handle_connect():
+    """处理WebSocket连接"""
+    print('Client connected')
+    
+@socketio.on('disconnect')
+def handle_disconnect():
+    """处理WebSocket断开连接"""
+    print('Client disconnected')
+
+def start_file_monitor():
+    """启动文件监控"""
+    try:
+        file_monitor.start()
+    except Exception as e:
+        print(f"启动文件监控失败: {e}")
+
 if __name__ == '__main__':
+    # 启动文件监控
+    start_file_monitor()
+    
+    # 启动Flask应用
     server_config = config['server']
-    app.run(
+    socketio.run(
+        app,
         host=server_config['host'],
         port=server_config['port'],
         debug=server_config['debug']

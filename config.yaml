@@ -2,7 +2,6 @@
 app:
   # 默认扫描目录，支持相对路径和绝对路径
   default_scan_dir: "C:/Users/z3744/Desktop/cursor_project/RY_PytestDemo/data"
-  
   # 上传文件配置
   upload_folder: "uploads"
   max_file_size: 16777216  # 16MB

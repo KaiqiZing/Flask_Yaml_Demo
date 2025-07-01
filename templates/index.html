@@ -121,14 +121,24 @@
 
 {% block scripts %}
 <script>
+    function normalizePath(path) {
+        // 使用字符串分割和拼接来避免正则表达式的问题
+        const parts = path.split('\\');
+        return parts.join('/').split('/').filter(Boolean).join('/');
+    }
+
     function downloadFile(filePath) {
-        window.open(`/api/download/${encodeURIComponent(filePath)}`, '_blank');
+        // 使用String.raw来处理原始字符串
+        const rawPath = String.raw`${filePath}`;
+        const normalizedPath = normalizePath(rawPath);
+        window.open(`/api/download/${encodeURIComponent(normalizedPath)}`, '_blank');
     }
 
     function changeDirectory() {
         const dir = document.getElementById('directory-input').value.trim();
         if (dir) {
-            window.location.href = `/?dir=${encodeURIComponent(dir)}`;
+            const normalizedDir = normalizePath(dir);
+            window.location.href = `/?dir=${encodeURIComponent(normalizedDir)}`;
         }
     }
 
