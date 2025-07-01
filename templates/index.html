@@ -8,7 +8,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="fas fa-list me-2"></i>YAML文件列表</h2>
             <div>
-                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                <a href="{{ url_for('yaml.upload_file') }}" class="btn btn-primary">
                     <i class="fas fa-upload me-1"></i>上传文件
                 </a>
                 <button class="btn btn-outline-secondary ms-2" onclick="refreshFiles()">
@@ -69,7 +69,7 @@
                         </p>
                         
                         <p class="card-text text-muted small mb-3">
-                            <i class="fas fa-weight-hanging me-1"></i>{{ formatFileSize(file.size) }}
+                            <i class="fas fa-weight-hanging me-1"></i>{{ file.size|format_size }}
                         </p>
 
                         {% if file.error %}
@@ -80,12 +80,12 @@
                         {% endif %}
 
                         <div class="btn-group w-100" role="group">
-                            <a href="{{ url_for('view_file', file_path=file.path) }}" 
+                            <a href="{{ url_for('yaml.view_file', file_path=file.path) }}" 
                                class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-eye me-1"></i>查看
                             </a>
                             {% if not file.error %}
-                            <a href="{{ url_for('edit_file', file_path=file.path) }}" 
+                            <a href="{{ url_for('yaml.edit_file', file_path=file.path) }}" 
                                class="btn btn-outline-warning btn-sm">
                                 <i class="fas fa-edit me-1"></i>编辑
                             </a>
@@ -106,7 +106,7 @@
             <h4 class="text-muted">没有找到YAML文件</h4>
             <p class="text-muted">在目录 "{{ current_dir }}" 中没有发现任何.yaml或.yml文件</p>
             <div class="d-flex justify-content-center gap-2">
-                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">
+                <a href="{{ url_for('yaml.upload_file') }}" class="btn btn-primary">
                     <i class="fas fa-upload me-1"></i>上传第一个文件
                 </a>
                 <button class="btn btn-outline-secondary" onclick="changeDirectory()">
@@ -157,24 +157,6 @@
         if (e.key === 'Enter') {
             changeDirectory();
         }
-    });
-
-    // 格式化文件大小显示
-    document.addEventListener('DOMContentLoaded', function() {
-        const sizeElements = document.querySelectorAll('.card-text.text-muted.small');
-        sizeElements.forEach(element => {
-            if (element.textContent.includes('Bytes')) {
-                const sizeText = element.textContent;
-                const sizeMatch = sizeText.match(/(\d+)/);
-                if (sizeMatch) {
-                    const bytes = parseInt(sizeMatch[1]);
-                    element.innerHTML = element.innerHTML.replace(
-                        sizeMatch[0] + ' Bytes',
-                        formatFileSize(bytes)
-                    );
-                }
-            }
-        });
     });
 </script>
 {% endblock %} 

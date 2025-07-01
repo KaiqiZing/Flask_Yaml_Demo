@@ -1,3 +1,7 @@
 Flask==2.3.3
+Flask-SocketIO==5.3.6
 PyYAML==6.0.1
-Werkzeug==2.3.7 
+Werkzeug==2.3.7
+watchdog==3.0.0
+python-socketio==5.9.0
+python-engineio==4.7.1 
